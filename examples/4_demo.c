@@ -23,6 +23,8 @@ int main(int argc, char** argv) {
 
     if (NMIX_OpenAudio(NMIX_DEFAULT_DEVICE, NMIX_DEFAULT_FREQUENCY, NMIX_DEFAULT_SAMPLES) != 0) {
         fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return -1;
     }
     Sound_Init();
 

@@ -34,9 +34,10 @@ static void square_callback(void* userdata, void* _stream, int len) {
     }
 }
 
-int main() {
+int main(void) {
     if (NMIX_OpenAudio(NMIX_DEFAULT_DEVICE, NMIX_DEFAULT_FREQUENCY, NMIX_DEFAULT_SAMPLES) != 0) {
         fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
+        return -1;
     }
 
     // creating a new source, with float samples, 1 channel (mono), and "x"

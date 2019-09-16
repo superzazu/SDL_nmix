@@ -20,9 +20,10 @@ static void sine_callback(void* userdata, void* _stream, int len) {
     }
 }
 
-int main() {
+int main(void) {
     if (NMIX_OpenAudio(NMIX_DEFAULT_DEVICE, NMIX_DEFAULT_FREQUENCY, NMIX_DEFAULT_SAMPLES) != 0) {
         fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
+        return -1;
     }
 
     NMIX_SetMasterGain(0); // mute audio output

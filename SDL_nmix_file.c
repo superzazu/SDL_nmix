@@ -71,6 +71,11 @@ static void sdlsound_callback(void* userdata, void* _stream, int bytes) {
 
 NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
         SDL_bool predecode) {
+    if (NMIX_GetAudioDevice() == 0) {
+        SDL_SetError("Please open NMIX device before creating sources.");
+        return NULL;
+    }
+
     NMIX_FileSource* s = SDL_malloc(sizeof(NMIX_FileSource));
     if (s == NULL) {
         SDL_SetError("Failed to allocate memory while loading sound");

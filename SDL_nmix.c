@@ -91,15 +91,23 @@ static void nmix_callback(void* userdata, Uint8* _stream, int stream_len) {
 }
 
 int NMIX_OpenAudio(const char* device, int freq, int samples) {
+    if (audio_device != 0) {
+        SDL_SetError("NMIX device is already opened.");
+        return -1;
+    }
+
+    SDL_version linked;
+    SDL_GetVersion(&linked);
+    if (SDL_VERSIONNUM(linked.major, linked.minor, linked.patch) <
+            SDL_VERSIONNUM(2, 0, 7)) {
+        SDL_SetError("SDL_nmix requires SDL 2.0.7 or later.");
+        return -1;
+    }
+
     if (!SDL_WasInit(SDL_INIT_AUDIO)) {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
             return -1;
         }
-    }
-
-    if (audio_device != 0) {
-        SDL_SetError("NMIX device is already opened.");
-        return -1;
     }
 
     // internally, SDL_nmix uses float (AUDIO_F32SYS) samples
@@ -117,7 +125,7 @@ int NMIX_OpenAudio(const char* device, int freq, int samples) {
         return -1;
     }
 
-    SDL_PauseAudioDevice(audio_device, 0); // auto-start the playback
+    NMIX_PausePlayback(SDL_FALSE);
 
     return 0;
 }
