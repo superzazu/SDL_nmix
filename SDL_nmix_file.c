@@ -86,9 +86,8 @@ NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
     s->ext = ext;
 
     SDL_AudioSpec* spec = NMIX_GetAudioSpec();
-    Sound_AudioInfo format = {spec->format, spec->channels, spec->freq};
 
-    s->sample = Sound_NewSample(s->rw, s->ext, &format, spec->size);
+    s->sample = Sound_NewSample(s->rw, s->ext, NULL, spec->size);
     if (s->sample == NULL) {
         SDL_free(s);
         SDL_SetError("SDL_sound error: %s", Sound_GetError());
@@ -96,9 +95,9 @@ NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
     }
 
     s->source = NMIX_NewSource(
-        spec->format,
-        spec->channels,
-        spec->freq,
+        s->sample->actual.format,
+        s->sample->actual.channels,
+        s->sample->actual.rate,
         sdlsound_callback,
         s);
     if (s->source == NULL) {
