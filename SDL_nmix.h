@@ -33,6 +33,7 @@
 #ifndef SDL_NMIX_H
 #define SDL_NMIX_H
 
+#include <stdio.h>
 #include <SDL.h>
 
 // SDL_nmix requires SDL 2.0.7+ because of its use of SDL_AudioStream
