@@ -5,9 +5,9 @@ SDL_nmix is a lightweight audio mixer for the SDL (2.0.7+) that supports playbac
 - stereo audio mixer
 - only two files to copy to your project, under 800 lines of code
 - free and open source under zlib license
-- cross-platform: tested on macOS, debian and web (thanks to emscripten)
-- automatic audio conversion on the fly
+- cross-platform: tested on macOS, debian, Windows and web (thanks to emscripten)
 - a binding to [SDL_sound](https://hg.icculus.org/icculus/SDL_sound/) is provided, to decode the most usual file formats (ogg/wav/flac/mp3/mod/xm/it/etc), with seamless looping. The files can be either preloaded into memory or streamed.
+- automatic audio conversion on the fly
 - linear panning + gain setting on each source
 - a global gain setting
 

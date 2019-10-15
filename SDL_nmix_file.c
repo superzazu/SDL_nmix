@@ -1,68 +1,70 @@
 #include "SDL_nmix_file.h"
 
 // this function is used for debug to analyse performance
-static int Fake_Sound_Decode(Sound_Sample* sample) {
-    SDL_memset(sample->buffer, 0, sample->buffer_size);
-    return sample->buffer_size;
-}
+// static int Fake_Sound_Decode(Sound_Sample* sample) {
+//     SDL_memset(sample->buffer, 0, sample->buffer_size);
+//     return sample->buffer_size;
+// }
 
-static void sdlsound_callback(void* userdata, void* _stream, int bytes) {
+static void sdlsound_callback(void* userdata, void* _buffer, int buffer_size) {
     NMIX_FileSource* s = (NMIX_FileSource*) userdata;
-    Uint8* stream = (Uint8*) _stream;
+    Uint8* buffer = (Uint8*) _buffer;
 
-    // SDL_sound uses an internal buffer `s->sample->buffer` with a fixed size
-    // `s->sample->buffer_size` ; so we keep track of "where we are at" in
-    // the buffer using the pointer `s->buffer`.
-    // The variable `s->bytes_left` represents the number of bytes left
+    // SDL_sound uses an internal buffer "s->sample->buffer" with a fixed size
+    // "s->sample->buffer_size", so we keep track of "where we are at" in
+    // the buffer using the pointer "s->buffer".
+    // The variable "s->bytes_left" represents the number of bytes left
     // to read in the SDL_sound internal buffer.
 
     int bytes_written = 0;
-    while (bytes_written < bytes) {
+    while (bytes_written < buffer_size) {
         // we calculate how many bytes we should copy
-        int copy_size = bytes - bytes_written;
+        int copy_size = buffer_size - bytes_written;
         if (copy_size > s->bytes_left) {
             copy_size = s->bytes_left;
         }
 
-        // we copy "copy_size" bytes to the stream and advance our pointer
-        SDL_memcpy(stream + bytes_written, s->buffer, copy_size);
+        // we copy "copy_size" bytes to the buffer and advance our pointer
+        SDL_memcpy(buffer + bytes_written, s->buffer, copy_size);
         s->bytes_left -= copy_size;
         s->buffer += copy_size;
         bytes_written += copy_size;
 
-        // we fetch more data if needed
+        // if we copied all bytes from the internal buffer, we try to fetch
+        // more data
         if (s->bytes_left == 0) {
             // we reset the buffer pointer + bytes_left values
             s->bytes_left = s->sample->buffer_size;
             s->buffer = s->sample->buffer;
 
-            // if the source is predecoded, that means we reached the end of
-            // source
+            // we check if we have reached EOF and set the flag accordingly
             if (s->predecoded) {
-                s->source->remove = SDL_TRUE;
+                // if the source is predecoded, 0 bytes left means we're at EOF
+                s->source->eof = SDL_TRUE;
             }
             else {
+                // if the source is streamed, we check EOF with SDL_sound
+                // if we're not at EOF, we decode more data
                 if ((s->sample->flags & SOUND_SAMPLEFLAG_EOF) ||
                     (s->sample->flags & SOUND_SAMPLEFLAG_EAGAIN)) {
-                    s->source->remove = SDL_TRUE;
+                    s->source->eof = SDL_TRUE;
                 }
                 else {
-                    // the source is streamed, so we try to access more data
                     s->bytes_left = Sound_Decode(s->sample);
                 }
             }
 
-            // if we arrived at the end of the source, we rewind it
-            if (s->source->remove) {
-                NMIX_Rewind(s);
+            // if we are at EOF, we either rewind it (if loop is on)
+            // or set all remaining bytes of buffer to silence
+            if (s->source->eof) {
                 if (s->loop_on) {
-                    s->source->remove = SDL_FALSE;
+                    NMIX_Rewind(s);
                 }
                 else {
                     // set all remaining bytes to silence (0) and return
-                    SDL_memset(stream + bytes_written, 0,
-                        bytes - bytes_written);
-                    return;
+                    SDL_memset(buffer + bytes_written, 0,
+                        buffer_size - bytes_written);
+                    break;
                 }
             }
         }
@@ -78,7 +80,7 @@ NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
 
     NMIX_FileSource* s = SDL_malloc(sizeof(NMIX_FileSource));
     if (s == NULL) {
-        SDL_SetError("Failed to allocate memory while loading sound");
+        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -111,15 +113,36 @@ NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
 
     s->loop_on = SDL_FALSE;
 
-    // we predecode the whole file if necessary: Sound_DecodeAll will resize
-    // its internal buffer and store all data inside.
     s->predecoded = predecode;
     if (predecode) {
+        // we predecode the whole file: Sound_DecodeAll will resize
+        // its internal buffer and store all data inside.
         s->bytes_left = Sound_DecodeAll(s->sample);
         s->buffer = s->sample->buffer;
     }
 
     return s;
+}
+
+Sint32 NMIX_GetDuration(NMIX_FileSource* s) {
+    if (s == NULL) {
+        return -1;
+    }
+
+    return Sound_GetDuration(s->sample);
+}
+
+int NMIX_Seek(NMIX_FileSource* s, int ms) {
+    if (s == NULL) {
+        return -1;
+    }
+
+    if (Sound_Seek(s->sample, ms) == 0) {
+        SDL_SetError("Error while seeking source: %s", Sound_GetError());
+        return -1;
+    }
+
+    return 0;
 }
 
 int NMIX_Rewind(NMIX_FileSource* s) {
@@ -128,6 +151,7 @@ int NMIX_Rewind(NMIX_FileSource* s) {
     }
 
     SDL_LockAudioDevice(NMIX_GetAudioDevice());
+    s->source->eof = SDL_FALSE;
     s->bytes_left = 0;
     s->buffer = s->sample->buffer;
 
@@ -149,6 +173,7 @@ SDL_bool NMIX_GetLoop(NMIX_FileSource* s) {
     if (s == NULL) {
         return SDL_FALSE;
     }
+
     return s->loop_on;
 }
 
@@ -156,6 +181,7 @@ void NMIX_SetLoop(NMIX_FileSource* s, SDL_bool loop_on) {
     if (s == NULL) {
         return;
     }
+
     s->loop_on = loop_on;
 }
 
@@ -163,6 +189,7 @@ void NMIX_FreeFileSource(NMIX_FileSource* s) {
     if (s == NULL) {
         return;
     }
+
     SDL_LockAudioDevice(NMIX_GetAudioDevice());
     if (s->sample != NULL) {
         Sound_FreeSample(s->sample);

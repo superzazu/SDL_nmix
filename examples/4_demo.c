@@ -2,6 +2,7 @@
 // rewind music, 'd' to play a sound and 'f' to toggle sine wave; 'q' to exit
 
 #include <stdio.h>
+#include <math.h>
 #include <SDL.h>
 
 #include "../SDL_nmix.h"
@@ -64,7 +65,8 @@ int main(int argc, char** argv) {
     // main loop
     int running = 1;
     SDL_Window* window = SDL_CreateWindow("SDL_nmix demo", 0, 0, 640, 480, 0);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
     SDL_Log("press 's' to rewind music, 'd' to play a sound"
             " and 'f' to toggle sine wave. 'q' to exit");

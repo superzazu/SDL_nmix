@@ -2,6 +2,7 @@
 //            and play them simultaneously
 
 #include <stdio.h>
+#include <math.h>
 #include <SDL.h>
 #include "../SDL_nmix.h"
 
@@ -34,7 +35,7 @@ static void square_callback(void* userdata, void* _stream, int len) {
     }
 }
 
-int main(void) {
+int main(int argc, char** argv) {
     if (NMIX_OpenAudio(NMIX_DEFAULT_DEVICE, NMIX_DEFAULT_FREQUENCY, NMIX_DEFAULT_SAMPLES) != 0) {
         fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
         return -1;

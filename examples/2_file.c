@@ -2,6 +2,7 @@
 //           a given sound file
 
 #include <stdio.h>
+#include <math.h>
 #include <SDL.h>
 
 #include "../SDL_nmix.h"

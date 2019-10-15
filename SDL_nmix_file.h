@@ -22,10 +22,9 @@ typedef struct NMIX_FileSource {
     Sound_Sample* sample; /**< The SDL_sound struct used to decode. */
     NMIX_Source* source; /**< The NMIX_Source source. */
     SDL_bool loop_on; /**< Whether the source should be looped or not. */
-
-    Uint8* buffer; /**< Pointer to the internal buffer, at the current position
-                        of decoding. */
-    int bytes_left; /**< Number of bytes left to read in internal buffer. */
+    Uint8* buffer; /**< Pointer to the SDL_sound buffer, at the current
+                        position of decoding. */
+    int bytes_left; /**< Number of bytes left to read in SDL_sound buffer. */
     SDL_bool predecoded; /**< Set if the source is pre-decoded in memory. */
 } NMIX_FileSource;
 
@@ -47,11 +46,34 @@ typedef struct NMIX_FileSource {
  *           message with a call to SDL_GetError()
  *
  * \sa NMIX_FreeFileSource
+ * \sa NMIX_GetDuration
+ * \sa NMIX_Seek
  * \sa NMIX_Rewind
  * \sa NMIX_SetLoop
  */
 NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
     SDL_bool predecode);
+
+/**
+ * \fn Sint32 NMIX_GetDuration(NMIX_FileSource* s)
+ * \brief Returns the duration (in milliseconds) of a NMIX_FileSource.
+ *
+ *    \param s The file source to query
+ *   \return the duration in milliseconds, -1 on error. You can retrieve
+ *           the error message with a call to SDL_GetError()
+ */
+Sint32 NMIX_GetDuration(NMIX_FileSource* s);
+
+/**
+ * \fn int NMIX_Seek(NMIX_FileSource* s, int ms)
+ * \brief Modifies a NMIX_FileSource position.
+ *
+ *    \param s The file source to seek
+ *   \param ms The new position in milliseconds from the beginning of the source
+ *   \return zero on success, -1 on error. You can retrieve the error message
+ *           with a call to SDL_GetError()
+ */
+int NMIX_Seek(NMIX_FileSource* s, int ms);
 
 /**
  * \fn int NMIX_Rewind(NMIX_FileSource* s)

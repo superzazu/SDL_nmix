@@ -3,17 +3,21 @@
 /**
  * \mainpage SDL_nmix
  *
- * SDL_nmix is a lightweight stereo audio mixer for the SDL (2.0.7+). The code
- * is written in C99 and available under the zlib license. Features:
- *
+ * SDL_nmix is a lightweight audio mixer for the SDL (2.0.7+) that supports
+ * playback of both static and streaming sources. The code is written in C99
+ * and available under the zlib license. It was made primarily for game
+ * development. Features:
+
  * - stereo audio mixer
  * - only two files to copy to your project, under 800 lines of code
- * - open source under zlib license
- * - automatic audio conversion on the fly
+ * - free and open source under zlib license
+ * - cross-platform: tested on macOS, debian, Windows and web (thanks to
+ *   emscripten)
  * - a binding to [SDL_sound](https://hg.icculus.org/icculus/SDL_sound/) is
- *   provided, to decode the most usual file formats (ogg/wav/flac/mp3/mod/
- *   xm/it/etc), with seamless looping. The files can be either preloaded
- *   into memory or streamed.
+ *   provided, to decode the most usual file formats
+ *   (ogg/wav/flac/mp3/mod/xm/it/etc), with seamless looping. The files can be
+ *   either preloaded into memory or streamed.
+ * - automatic audio conversion on the fly
  * - linear panning + gain setting on each source
  * - a global gain setting
  *
@@ -42,17 +46,14 @@
 #endif
 
 #define NMIX_VER_MAJOR 1 /**< SDL_nmix version (major). */
-#define NMIX_VER_MINOR 0 /**< SDL_nmix version (minor). */
+#define NMIX_VER_MINOR 1 /**< SDL_nmix version (minor). */
 #define NMIX_VER_PATCH 0 /**< SDL_nmix version (patch). */
 
 #define NMIX_DEFAULT_FREQUENCY 44100 /**< The default sampling rate. */
 #define NMIX_DEFAULT_SAMPLES 4096 /**< The default audio buffer size
                                      (in sample frames) */
-#define NMIX_DEFAULT_DEVICE NULL /**< The default audio device to use
-                                  (requests the most reasonable default). */
-#define NMIX_DEFAULT_CHANNELS 2 /**< The number of output channels. */
-#define NMIX_DEFAULT_FORMAT AUDIO_F32SYS /**< The format used for mixing
-                                              samples together. */
+#define NMIX_DEFAULT_DEVICE NULL /**< The default audio device to use (NULL
+                                      requests the most reasonable default). */
 
 /**
  *  This macro returns the number of bytes per sample for a given
@@ -73,7 +74,7 @@
  *
  */
 typedef void (SDLCALL* NMIX_SourceCallback) (
-    void* userdata, void* stream, int len);
+    void* userdata, void* stream, int stream_size);
 
 /**
  * \struct NMIX_Source
@@ -85,25 +86,26 @@ typedef void (SDLCALL* NMIX_SourceCallback) (
  * \sa NMIX_NewSource
  */
 typedef struct NMIX_Source {
+    int rate; /**< The sampling rate of the source (samples per second). */
     SDL_AudioFormat format; /**< The source format. */
-    int channels; /**< The number of channels of the source. */
-    int freq; /**< The sampling rate of the source (samples per second). */
+    Uint8 channels; /**< The number of channels of the source. */
     float pan; /**< The panning of the source (-1 < pan < 1, default = 0). */
     float gain; /**< The gain of the source (0 < gain < 2, default = 1). */
 
     NMIX_SourceCallback callback; /**< Callback used to retrieve data. */
     void* userdata; /**< User-defined pointer that is passed to callback. */
+    SDL_bool eof; /**< Flag set if the source has no more data to play.
+                       This flag must be set to 1 in the NMIX_SourceCallback
+                       for SDL_nmix to stop the source playback. */
 
     void* in_buffer; /**< Internal audio buffer modified by the callback. */
-    void* out_buffer; /**< Internal audio buffer holding the converted data. */
-    int in_buffer_len; /**< Length in bytes of the in_buffer. */
-    int out_buffer_len; /**< Length in bytes of the out_buffer. */
+    int in_buffer_size; /**< Size in bytes of in_buffer. */
     SDL_AudioStream* stream; /**< Used to convert audio data on the fly. */
-    SDL_bool needs_conversion; /**< Flag set when data conversion is needed. */
+    void* out_buffer; /**< Internal audio buffer holding the converted data. */
+    int out_buffer_size; /**< Size in bytes of out_buffer. */
 
     struct NMIX_Source* prev; /**< Previous source in list. */
     struct NMIX_Source* next; /**< Next source in list. */
-    SDL_bool remove; /**< Flag, set when source should be removed from list. */
 } NMIX_Source;
 
 /**
@@ -122,15 +124,15 @@ typedef struct NMIX_Source {
  *
  *    \param device A UTF-8 string reported by SDL_GetAudioDeviceName() (or
  *                  NULL to get the most reasonable default)
- *    \param freq The sampling rate (samples per second)
- *    \param samples Audio buffer size in sample FRAMES (total samples
+ *    \param rate The sampling rate (samples per second)
+ *    \param samples Audio buffer size in sample frames (total samples
  *           divided by channel count)
  *   \return zero on success, -1 on error. You can retrieve the error message
  *           with a call to SDL_GetError()
  *
  * \sa NMIX_CloseAudio
  */
-int NMIX_OpenAudio(const char* device, int freq, int samples);
+int NMIX_OpenAudio(const char* device, int rate, int samples);
 
 /**
  * \fn int NMIX_CloseAudio()
@@ -201,8 +203,8 @@ SDL_AudioSpec* NMIX_GetAudioSpec();
 SDL_AudioDeviceID NMIX_GetAudioDevice();
 
 /**
- * \fn NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, int channels,
- *         int freq, NMIX_SourceCallback callback, void* userdata);
+ * \fn NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, Uint8 channels,
+ *         int rate, NMIX_SourceCallback callback, void* userdata);
  * \brief Creates a new NMIX_Source.
  *
  * The audio format of the source (and the number of channels) must be
@@ -212,10 +214,10 @@ SDL_AudioDeviceID NMIX_GetAudioDevice();
  * This is an example of callback for a mono source with AUDIO_F32SYS format:
  *
  * \code
- * void my_callback(void* userdata, void* _stream, int len) {
+ * void my_callback(void* userdata, void* _stream, int stream_size) {
  *     float* stream = (float*) _stream;
  *
- *     for (size_t i = 0; i < len / sizeof(float); i++) {
+ *     for (size_t i = 0; i < stream_size / sizeof(float); i++) {
  *         stream[i] = random_float();
  *     }
  * }
@@ -229,15 +231,12 @@ SDL_AudioDeviceID NMIX_GetAudioDevice();
  * your source is in another format, SDL_nmix will automatically convert your
  * audio data on the fly.
  *
- * Performance tip: prefer using AUDIO_F32SYS if possible, because in this
- * case, no audio conversion will be done.
- *
  * If the source has more than 1 channel, the audio data must be
  * interleaved (LRLRLR ordering).
  *
  *    \param format The format of the source samples
  *    \param channels The number of channels of the source
- *    \param freq The sampling rate of the source
+ *    \param rate The sampling rate of the source
  *    \param callback Callback function, called when more audio data is needed
  *    \param userdata Userdata passed to callback
  *   \return zero on success, -1 on error. You can retrieve the error message
@@ -246,7 +245,7 @@ SDL_AudioDeviceID NMIX_GetAudioDevice();
  * \sa NMIX_SourceCallback
  * \sa NMIX_FreeSource
  */
-NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, int channels, int freq,
+NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, Uint8 channels, int rate,
     NMIX_SourceCallback callback, void* userdata);
 
 /**
