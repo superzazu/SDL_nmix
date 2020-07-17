@@ -17,15 +17,15 @@
  * \sa NMIX_NewFileSource
  */
 typedef struct NMIX_FileSource {
-    SDL_RWops* rw; /**< Pointer to the SDL_RWops used when decoding. */
-    const char* ext; /**< The file extension. */
-    Sound_Sample* sample; /**< The SDL_sound struct used to decode. */
-    NMIX_Source* source; /**< The NMIX_Source source. */
-    SDL_bool loop_on; /**< Whether the source should be looped or not. */
-    Uint8* buffer; /**< Pointer to the SDL_sound buffer, at the current
-                        position of decoding. */
-    int bytes_left; /**< Number of bytes left to read in SDL_sound buffer. */
-    SDL_bool predecoded; /**< Set if the source is pre-decoded in memory. */
+  SDL_RWops* rw; /**< Pointer to the SDL_RWops used when decoding. */
+  const char* ext; /**< The file extension. */
+  Sound_Sample* sample; /**< The SDL_sound struct used to decode. */
+  NMIX_Source* source; /**< The NMIX_Source source. */
+  SDL_bool loop_on; /**< Whether the source should be looped or not. */
+  Uint8* buffer; /**< Pointer to the SDL_sound buffer, at the current
+                      position of decoding. */
+  int bytes_left; /**< Number of bytes left to read in SDL_sound buffer. */
+  SDL_bool predecoded; /**< Set if the source is pre-decoded in memory. */
 } NMIX_FileSource;
 
 /**
@@ -51,8 +51,8 @@ typedef struct NMIX_FileSource {
  * \sa NMIX_Rewind
  * \sa NMIX_SetLoop
  */
-NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char* ext,
-    SDL_bool predecode);
+NMIX_FileSource* NMIX_NewFileSource(
+    SDL_RWops* rw, const char* ext, SDL_bool predecode);
 
 /**
  * \fn Sint32 NMIX_GetDuration(NMIX_FileSource* s)

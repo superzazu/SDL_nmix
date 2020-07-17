@@ -50,16 +50,18 @@
 #define NMIX_VER_PATCH 0 /**< SDL_nmix version (patch). */
 
 #define NMIX_DEFAULT_FREQUENCY 44100 /**< The default sampling rate. */
-#define NMIX_DEFAULT_SAMPLES 4096 /**< The default audio buffer size
-                                     (in sample frames) */
-#define NMIX_DEFAULT_DEVICE NULL /**< The default audio device to use (NULL
-                                      requests the most reasonable default). */
+#define NMIX_DEFAULT_SAMPLES \
+  4096 /**< The default audio buffer size \
+          (in sample frames) */
+#define NMIX_DEFAULT_DEVICE \
+  NULL /**< The default audio device to use (NULL \
+            requests the most reasonable default). */
 
 /**
  *  This macro returns the number of bytes per sample for a given
  *  SDL_AudioFormat.
  */
-#define SDL_AUDIO_SAMPLELEN(x) (((x) & SDL_AUDIO_MASK_BITSIZE) / 8)
+#define SDL_AUDIO_SAMPLELEN(x) (((x) &SDL_AUDIO_MASK_BITSIZE) / 8)
 
 /**
  *  This function is called when SDL_nmix needs more data for a source.
@@ -73,7 +75,7 @@
  *  Stereo samples are stored in a LRLRLR ordering.
  *
  */
-typedef void (SDLCALL* NMIX_SourceCallback) (
+typedef void(SDLCALL* NMIX_SourceCallback)(
     void* userdata, void* stream, int stream_size);
 
 /**
@@ -86,26 +88,26 @@ typedef void (SDLCALL* NMIX_SourceCallback) (
  * \sa NMIX_NewSource
  */
 typedef struct NMIX_Source {
-    int rate; /**< The sampling rate of the source (samples per second). */
-    SDL_AudioFormat format; /**< The source format. */
-    Uint8 channels; /**< The number of channels of the source. */
-    float pan; /**< The panning of the source (-1 < pan < 1, default = 0). */
-    float gain; /**< The gain of the source (0 < gain < 2, default = 1). */
+  int rate; /**< The sampling rate of the source (samples per second). */
+  SDL_AudioFormat format; /**< The source format. */
+  Uint8 channels; /**< The number of channels of the source. */
+  float pan; /**< The panning of the source (-1 < pan < 1, default = 0). */
+  float gain; /**< The gain of the source (0 < gain < 2, default = 1). */
 
-    NMIX_SourceCallback callback; /**< Callback used to retrieve data. */
-    void* userdata; /**< User-defined pointer that is passed to callback. */
-    SDL_bool eof; /**< Flag set if the source has no more data to play.
-                       This flag must be set to 1 in the NMIX_SourceCallback
-                       for SDL_nmix to stop the source playback. */
+  NMIX_SourceCallback callback; /**< Callback used to retrieve data. */
+  void* userdata; /**< User-defined pointer that is passed to callback. */
+  SDL_bool eof; /**< Flag set if the source has no more data to play.
+                     This flag must be set to 1 in the NMIX_SourceCallback
+                     for SDL_nmix to stop the source playback. */
 
-    void* in_buffer; /**< Internal audio buffer modified by the callback. */
-    int in_buffer_size; /**< Size in bytes of in_buffer. */
-    SDL_AudioStream* stream; /**< Used to convert audio data on the fly. */
-    void* out_buffer; /**< Internal audio buffer holding the converted data. */
-    int out_buffer_size; /**< Size in bytes of out_buffer. */
+  void* in_buffer; /**< Internal audio buffer modified by the callback. */
+  int in_buffer_size; /**< Size in bytes of in_buffer. */
+  SDL_AudioStream* stream; /**< Used to convert audio data on the fly. */
+  void* out_buffer; /**< Internal audio buffer holding the converted data. */
+  int out_buffer_size; /**< Size in bytes of out_buffer. */
 
-    struct NMIX_Source* prev; /**< Previous source in list. */
-    struct NMIX_Source* next; /**< Next source in list. */
+  struct NMIX_Source* prev; /**< Previous source in list. */
+  struct NMIX_Source* next; /**< Next source in list. */
 } NMIX_Source;
 
 /**
