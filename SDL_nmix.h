@@ -137,7 +137,7 @@ typedef struct NMIX_Source {
 int NMIX_OpenAudio(const char* device, int rate, int samples);
 
 /**
- * \fn int NMIX_CloseAudio()
+ * \fn int NMIX_CloseAudio(void)
  * \brief Closes the audio device.
  *
  * This function should be called once at the end of the program,
@@ -148,7 +148,7 @@ int NMIX_OpenAudio(const char* device, int rate, int samples);
  *
  * \sa NMIX_OpenAudio
  */
-int NMIX_CloseAudio();
+int NMIX_CloseAudio(void);
 
 /**
  * \fn void NMIX_PausePlayback(SDL_bool pause_on)
@@ -162,7 +162,7 @@ int NMIX_CloseAudio();
 void NMIX_PausePlayback(SDL_bool pause_on);
 
 /**
- * \fn float NMIX_GetMasterGain()
+ * \fn float NMIX_GetMasterGain(void)
  * \brief Returns the master gain.
  *
  * This function returns the master gain. The default is 1 (= 100%).
@@ -171,7 +171,7 @@ void NMIX_PausePlayback(SDL_bool pause_on);
  *
  * \sa NMIX_SetMasterGain
  */
-float NMIX_GetMasterGain();
+float NMIX_GetMasterGain(void);
 
 /**
  * \fn void NMIX_SetMasterGain(float gain)
@@ -187,22 +187,22 @@ float NMIX_GetMasterGain();
 void NMIX_SetMasterGain(float gain);
 
 /**
- * \fn SDL_AudioSpec* NMIX_GetAudioSpec()
+ * \fn SDL_AudioSpec* NMIX_GetAudioSpec(void)
  * \brief Returns the internal audio spec used by SDL_nmix.
  *
  *   \return The audio spec
  *
  */
-SDL_AudioSpec* NMIX_GetAudioSpec();
+SDL_AudioSpec* NMIX_GetAudioSpec(void);
 
 /**
- * \fn SDL_AudioDeviceID NMIX_GetAudioDevice()
+ * \fn SDL_AudioDeviceID NMIX_GetAudioDevice(void)
  * \brief Returns the internal audio device id used by SDL_nmix.
  *
  *   \return The audio device id
  *
  */
-SDL_AudioDeviceID NMIX_GetAudioDevice();
+SDL_AudioDeviceID NMIX_GetAudioDevice(void);
 
 /**
  * \fn NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, Uint8 channels,

@@ -137,7 +137,7 @@ int NMIX_OpenAudio(const char* device, int rate, int samples) {
   return 0;
 }
 
-int NMIX_CloseAudio() {
+int NMIX_CloseAudio(void) {
   if (audio_device == 0) {
     SDL_SetError("NMIX device is already closed.");
     return -1;
@@ -152,7 +152,7 @@ void NMIX_PausePlayback(SDL_bool pause_on) {
   SDL_PauseAudioDevice(audio_device, pause_on);
 }
 
-float NMIX_GetMasterGain() {
+float NMIX_GetMasterGain(void) {
   return master_gain;
 }
 
@@ -160,11 +160,11 @@ void NMIX_SetMasterGain(float gain) {
   master_gain = clampf(gain, 0, 2);
 }
 
-SDL_AudioSpec* NMIX_GetAudioSpec() {
+SDL_AudioSpec* NMIX_GetAudioSpec(void) {
   return &mixer;
 }
 
-SDL_AudioDeviceID NMIX_GetAudioDevice() {
+SDL_AudioDeviceID NMIX_GetAudioDevice(void) {
   return audio_device;
 }
 
