@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../SDL_nmix.h"
 
 static void sine_callback(void* userdata, void* _stream, int len) {
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   // is passed as userdata.
   double x = 0;
   NMIX_Source* source1 =
-      NMIX_NewSource(AUDIO_F32SYS, 1, 44100, sine_callback, &x);
+      NMIX_NewSource(SDL_AUDIO_F32, 1, 44100, sine_callback, &x);
   if (source1 == NULL) {
     fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
   }
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
   // creating a new stereo source with Sint16 samples
   double x2 = 0;
   NMIX_Source* source2 =
-      NMIX_NewSource(AUDIO_S16SYS, 2, 44100, square_callback, &x2);
+      NMIX_NewSource(SDL_AUDIO_S16, 2, 44100, square_callback, &x2);
   if (source2 == NULL) {
     fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
   }

@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../SDL_nmix.h"
 
 #define NB_VOICES 32
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
   NMIX_Source* sources[NB_VOICES] = {NULL};
   for (int i = 0; i < NB_VOICES; i++) {
-    sources[i] = NMIX_NewSource(AUDIO_F32SYS, 2, 44100, sine_callback, &x);
+    sources[i] = NMIX_NewSource(SDL_AUDIO_F32, 2, 44100, sine_callback, &x);
     if (sources[i] == NULL) {
       fprintf(stderr, "NMIX Error: %s\n", SDL_GetError());
     }

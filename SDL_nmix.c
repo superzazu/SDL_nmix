@@ -1,6 +1,7 @@
 #include "SDL_nmix.h"
 
 static SDL_AudioSpec mixer = {0};
+static int mixer_spec_samples = 0;
 static SDL_AudioDeviceID audio_device = 0;
 static NMIX_Source* playing_sources = NULL; // linked list of sources playing
 static float master_gain = 1.f;
@@ -28,7 +29,7 @@ static SDL_INLINE void apply_panning(float pan, float* left, float* right) {
 static void SDLCALL nmix_callback(
     void* userdata, Uint8* _buffer, int buffer_size) {
   SDL_memset(_buffer, 0, buffer_size);
-  int const sample_size = SDL_AUDIO_SAMPLELEN(mixer.format);
+  int const sample_size = SDL_AUDIO_BYTESIZE(mixer.format);
 
   if (playing_sources == NULL) {
     return;
@@ -42,7 +43,7 @@ static void SDLCALL nmix_callback(
     int bytes_written = 0;
     while (bytes_written < buffer_size) {
       // calculating the copy size
-      int copy_size = SDL_AudioStreamAvailable(s->stream);
+      int copy_size = SDL_GetAudioStreamAvailable(s->stream);
 
       if (copy_size > s->out_buffer_size) {
         copy_size = s->out_buffer_size;
@@ -52,7 +53,8 @@ static void SDLCALL nmix_callback(
       }
 
       // retrieving bytes from converter
-      int bytes_read = SDL_AudioStreamGet(s->stream, s->out_buffer, copy_size);
+      int bytes_read =
+          SDL_GetAudioStreamData(s->stream, s->out_buffer, copy_size);
 
       // copying those bytes to buffer, mixing them with existing samples
       float* const buffer = (float*) (_buffer + bytes_written);
@@ -70,14 +72,14 @@ static void SDLCALL nmix_callback(
 
       // if there's no more data available in converter, send
       // more data to it
-      if (SDL_AudioStreamAvailable(s->stream) == 0) {
+      if (SDL_GetAudioStreamAvailable(s->stream) == 0) {
         if (!s->eof) {
           // retrieve new data
           s->callback(s->userdata, s->in_buffer, s->in_buffer_size);
 
           // and push it to the converter
-          if (SDL_AudioStreamPut(s->stream, s->in_buffer, s->in_buffer_size) !=
-              0) {
+          if (!SDL_PutAudioStreamData(
+                  s->stream, s->in_buffer, s->in_buffer_size)) {
             fprintf(stderr, "SDL_nmix: FATAL: %s\n", SDL_GetError());
             return;
           }
@@ -96,43 +98,58 @@ static void SDLCALL nmix_callback(
   }
 }
 
+void SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
+    int additional_amount, int total_amount) {
+  if (additional_amount > 0) {
+    Uint8* data = SDL_stack_alloc(Uint8, additional_amount);
+    if (data) {
+      nmix_callback(userdata, data, additional_amount);
+      SDL_PutAudioStreamData(stream, data, additional_amount);
+      SDL_stack_free(data);
+    }
+  }
+}
+
 int NMIX_OpenAudio(const char* device, int rate, int samples) {
   if (audio_device != 0) {
     SDL_SetError("NMIX device is already opened.");
     return -1;
   }
 
-  SDL_version linked;
-  SDL_GetVersion(&linked);
-  if (SDL_VERSIONNUM(linked.major, linked.minor, linked.patch) <
-      SDL_VERSIONNUM(2, 0, 7)) {
-    SDL_SetError("SDL_nmix requires SDL 2.0.7 or later.");
+  int linked = SDL_GetVersion();
+
+  if (linked < SDL_VERSIONNUM(3, 1, 5)) {
+    SDL_SetError("SDL_nmix requires SDL 3.1.5 or later.");
     return -1;
   }
 
   if (!SDL_WasInit(SDL_INIT_AUDIO)) {
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
       return -1;
     }
   }
 
-  // SDL_nmix uses float32 (AUDIO_F32SYS) samples for mixing, and only
+  // SDL_nmix uses float32 (SDL_AUDIO_F32) samples for mixing, and only
   // supports stereo output
-  SDL_AudioSpec wanted_spec = {0};
-  wanted_spec.freq = rate;
-  wanted_spec.format = AUDIO_F32SYS;
-  wanted_spec.channels = 2;
-  wanted_spec.samples = samples;
-  wanted_spec.callback = nmix_callback;
-  wanted_spec.userdata = NULL;
+  mixer.freq = rate;
+  mixer.format = SDL_AUDIO_F32;
+  mixer.channels = 2;
+  mixer_spec_samples = samples;
 
-  audio_device = SDL_OpenAudioDevice(
-      device, 0, &wanted_spec, &mixer, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
-  if (audio_device == 0) {
+  SDL_AudioStream* stream = SDL_OpenAudioDeviceStream(
+      SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &mixer, sdl3_audio_callback, NULL);
+
+  audio_device = SDL_GetAudioStreamDevice(stream);
+
+  // audio_device = SDL_OpenAudioDevice(
+  //   SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &wanted_spec, sdl3_audio_callback,
+  //   &data,
+  // device, 0, &wanted_spec, &mixer, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+  if (stream == NULL) {
     return -1;
   }
 
-  NMIX_PausePlayback(SDL_FALSE);
+  NMIX_PausePlayback(false);
 
   return 0;
 }
@@ -142,14 +159,18 @@ int NMIX_CloseAudio(void) {
     SDL_SetError("NMIX device is already closed.");
     return -1;
   }
-  SDL_PauseAudioDevice(audio_device, 1);
+  SDL_ResumeAudioDevice(audio_device);
   SDL_CloseAudioDevice(audio_device);
   audio_device = 0;
   return 0;
 }
 
-void NMIX_PausePlayback(SDL_bool pause_on) {
-  SDL_PauseAudioDevice(audio_device, pause_on);
+void NMIX_PausePlayback(bool pause_on) {
+  if (pause_on) {
+    SDL_PauseAudioDevice(audio_device);
+  } else {
+    SDL_ResumeAudioDevice(audio_device);
+  }
 }
 
 float NMIX_GetMasterGain(void) {
@@ -188,29 +209,34 @@ NMIX_Source* NMIX_NewSource(SDL_AudioFormat format, Uint8 channels, int rate,
   source->gain = 1.f;
   source->callback = callback;
   source->userdata = userdata;
-  source->eof = SDL_FALSE;
+  source->eof = false;
 
   // allocating the internal buffers:
   // note: we allocate roughly the size needed to store all the samples
   // that correspond to one nmix callback.
-  int in_nb_samples = source->rate * mixer.samples / mixer.freq;
+  int in_nb_samples = source->rate * mixer_spec_samples / mixer.freq;
   source->in_buffer_size =
-      in_nb_samples * source->channels * SDL_AUDIO_SAMPLELEN(source->format);
+      in_nb_samples * source->channels * SDL_AUDIO_BYTESIZE(source->format);
   source->in_buffer = SDL_malloc(source->in_buffer_size);
   if (source->in_buffer == NULL) {
     SDL_OutOfMemory();
     return NULL;
   }
 
-  source->out_buffer_size = mixer.size;
+  source->out_buffer_size = 4096; // mixer.size; // @TODO
   source->out_buffer = SDL_malloc(source->out_buffer_size);
   if (source->out_buffer == NULL) {
     SDL_OutOfMemory();
     return NULL;
   }
 
-  source->stream = SDL_NewAudioStream(source->format, source->channels,
-      source->rate, mixer.format, mixer.channels, mixer.freq);
+  const SDL_AudioSpec source_spec = {
+      .format = format,
+      .channels = channels,
+      .freq = rate,
+  };
+
+  source->stream = SDL_CreateAudioStream(&source_spec, &mixer);
   if (source->stream == NULL) {
     SDL_OutOfMemory();
     return NULL;
@@ -227,16 +253,14 @@ void NMIX_FreeSource(NMIX_Source* source) {
     return;
   }
 
-  SDL_LockAudioDevice(audio_device);
   if (NMIX_IsPlaying(source)) {
     NMIX_Pause(source);
   }
 
   SDL_free(source->in_buffer);
   SDL_free(source->out_buffer);
-  SDL_FreeAudioStream(source->stream);
+  SDL_DestroyAudioStream(source->stream);
   SDL_free(source);
-  SDL_UnlockAudioDevice(audio_device);
 }
 
 int NMIX_Play(NMIX_Source* source) {
@@ -244,16 +268,13 @@ int NMIX_Play(NMIX_Source* source) {
     return -1;
   }
 
-  SDL_LockAudioDevice(audio_device);
-
   // cannot play a source that is already being played
   if (NMIX_IsPlaying(source)) {
-    SDL_UnlockAudioDevice(audio_device);
     SDL_SetError("source is already playing");
     return -1;
   }
 
-  source->eof = SDL_FALSE;
+  source->eof = false;
 
   // no sources currently playing, so we set the first source
   if (playing_sources == NULL) {
@@ -270,8 +291,6 @@ int NMIX_Play(NMIX_Source* source) {
     source->prev = v;
   }
 
-  SDL_UnlockAudioDevice(audio_device);
-
   return 0;
 }
 
@@ -280,10 +299,7 @@ void NMIX_Pause(NMIX_Source* source) {
     return;
   }
 
-  SDL_LockAudioDevice(audio_device);
-
   if (!NMIX_IsPlaying(source)) {
-    SDL_UnlockAudioDevice(audio_device);
     return;
   }
 
@@ -301,13 +317,11 @@ void NMIX_Pause(NMIX_Source* source) {
 
   source->prev = NULL;
   source->next = NULL;
-
-  SDL_UnlockAudioDevice(audio_device);
 }
 
-SDL_bool NMIX_IsPlaying(NMIX_Source* source) {
+bool NMIX_IsPlaying(NMIX_Source* source) {
   if (source == NULL) {
-    return SDL_FALSE;
+    return false;
   }
   return source == playing_sources || source->prev != NULL;
 }

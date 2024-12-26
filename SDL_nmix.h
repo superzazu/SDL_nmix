@@ -3,17 +3,17 @@
 /**
  * \mainpage SDL_nmix
  *
- * SDL_nmix is a lightweight audio mixer for the SDL (2.0.7+) that supports
+ * SDL_nmix is a lightweight audio mixer for the SDL3 that supports
  * playback of both static and streaming sources. The code is written in C99
  * and available under the zlib license. It was made primarily for game
  * development. Features:
-
+ *
  * - stereo audio mixer
  * - only two files to copy to your project, under 800 lines of code
  * - free and open source under zlib license
  * - cross-platform: tested on macOS, debian, Windows and web (thanks to
  *   emscripten)
- * - a binding to [SDL_sound](https://hg.icculus.org/icculus/SDL_sound/) is
+ * - a binding to [SDL_sound](http://github.com/icculus/SDL_sound/) is
  *   provided, to decode the most usual file formats
  *   (ogg/wav/flac/mp3/mod/xm/it/etc), with seamless looping. The files can be
  *   either preloaded into memory or streamed.
@@ -21,7 +21,7 @@
  * - linear panning + gain setting on each source
  * - a global gain setting
  *
- * The library depends on the SDL (2.0.7+) which you can find
+ * The library depends on the SDL (3.1.5+) which you can find
  * [here](https://www.libsdl.org/). Just copy SDL_nmix.c/.h in your project,
  * and you're good to go. If you want to use the binding to SDL_sound, copy
  * `SDL_nmix_file.c` and `SDL_nmix_file.h` too.
@@ -38,30 +38,23 @@
 #define SDL_NMIX_H
 
 #include <stdio.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
-// SDL_nmix requires SDL 2.0.7+ because of its use of SDL_AudioStream
-#if !SDL_VERSION_ATLEAST(2, 0, 7)
-#error SDL_nmix requires SDL 2.0.7 or later.
+// SDL_nmix requires SDL 3.1.5+
+#if !SDL_VERSION_ATLEAST(3, 1, 5)
+#error SDL_nmix requires SDL 3.1.5 or later.
 #endif
 
-#define NMIX_VER_MAJOR 1 /**< SDL_nmix version (major). */
-#define NMIX_VER_MINOR 1 /**< SDL_nmix version (minor). */
+#define NMIX_VER_MAJOR 2 /**< SDL_nmix version (major). */
+#define NMIX_VER_MINOR 0 /**< SDL_nmix version (minor). */
 #define NMIX_VER_PATCH 0 /**< SDL_nmix version (patch). */
 
 #define NMIX_DEFAULT_FREQUENCY 44100 /**< The default sampling rate. */
 #define NMIX_DEFAULT_SAMPLES \
-  4096 /**< The default audio buffer size \
-          (in sample frames) */
+  4096 /**< The default audio buffer size (in sample frames) */
 #define NMIX_DEFAULT_DEVICE \
-  NULL /**< The default audio device to use (NULL \
-            requests the most reasonable default). */
-
-/**
- *  This macro returns the number of bytes per sample for a given
- *  SDL_AudioFormat.
- */
-#define SDL_AUDIO_SAMPLELEN(x) (((x) &SDL_AUDIO_MASK_BITSIZE) / 8)
+  NULL /**< The default audio device to use (NULL requests the most reasonable \
+          default). */
 
 /**
  *  This function is called when SDL_nmix needs more data for a source.
@@ -69,7 +62,7 @@
  *  \param userdata An application-specific parameter saved in
  *                  the NMIX_Source structure
  *  \param stream A pointer to the audio buffer.
- *  \param len The length of that buffer in bytes.
+ *  \param stream_size The size of that buffer in bytes.
  *
  *  Once the callback returns, the buffer will no longer be valid.
  *  Stereo samples are stored in a LRLRLR ordering.
@@ -87,7 +80,7 @@ typedef void(SDLCALL* NMIX_SourceCallback)(
  *
  * \sa NMIX_NewSource
  */
-typedef struct NMIX_Source {
+struct NMIX_Source {
   int rate; /**< The sampling rate of the source (samples per second). */
   SDL_AudioFormat format; /**< The source format. */
   Uint8 channels; /**< The number of channels of the source. */
@@ -96,7 +89,7 @@ typedef struct NMIX_Source {
 
   NMIX_SourceCallback callback; /**< Callback used to retrieve data. */
   void* userdata; /**< User-defined pointer that is passed to callback. */
-  SDL_bool eof; /**< Flag set if the source has no more data to play.
+  bool eof; /**< Flag set if the source has no more data to play.
                      This flag must be set to 1 in the NMIX_SourceCallback
                      for SDL_nmix to stop the source playback. */
 
@@ -108,7 +101,8 @@ typedef struct NMIX_Source {
 
   struct NMIX_Source* prev; /**< Previous source in list. */
   struct NMIX_Source* next; /**< Next source in list. */
-} NMIX_Source;
+};
+typedef struct NMIX_Source NMIX_Source; /**< Convenience typedef. */
 
 /**
  * \fn int NMIX_OpenAudio(const char* device, int freq, int samples)
@@ -151,7 +145,7 @@ int NMIX_OpenAudio(const char* device, int rate, int samples);
 int NMIX_CloseAudio(void);
 
 /**
- * \fn void NMIX_PausePlayback(SDL_bool pause_on)
+ * \fn void NMIX_PausePlayback(bool pause_on)
  * \brief Pauses (or resumes) the playback of the audio device.
  *
  * This function affects the SDL audio device, meaning that it impacts every
@@ -159,7 +153,7 @@ int NMIX_CloseAudio(void);
  *
  *    \param pause_on Whether the playback should be paused or not.
  */
-void NMIX_PausePlayback(SDL_bool pause_on);
+void NMIX_PausePlayback(bool pause_on);
 
 /**
  * \fn float NMIX_GetMasterGain(void)
@@ -213,7 +207,7 @@ SDL_AudioDeviceID NMIX_GetAudioDevice(void);
  * passed along with a callback function that will be called when SDL_nmix
  * needs more data during the playback of the source.
  *
- * This is an example of callback for a mono source with AUDIO_F32SYS format:
+ * This is an example of callback for a mono source with SDL_AUDIO_F32 format:
  *
  * \code
  * void my_callback(void* userdata, void* _stream, int stream_size) {
@@ -229,7 +223,7 @@ SDL_AudioDeviceID NMIX_GetAudioDevice(void);
  * initialized before the callback is called. If there is nothing to play,
  * the callback should fill the buffer with silence.
  *
- * SDL_nmix internally uses AUDIO_F32SYS for mixing the sources together. If
+ * SDL_nmix internally uses SDL_AUDIO_F32 for mixing the sources together. If
  * your source is in another format, SDL_nmix will automatically convert your
  * audio data on the fly.
  *
@@ -290,7 +284,7 @@ int NMIX_Play(NMIX_Source* source);
 void NMIX_Pause(NMIX_Source* source);
 
 /**
- * \fn SDL_bool NMIX_IsPlaying(NMIX_Source* source)
+ * \fn bool NMIX_IsPlaying(NMIX_Source* source)
  * \brief Returns whether a NMIX_Source is currently playing.
  *
  *    \param source The source to query
@@ -298,7 +292,7 @@ void NMIX_Pause(NMIX_Source* source);
  *
  * \sa NMIX_Play
  */
-SDL_bool NMIX_IsPlaying(NMIX_Source* source);
+bool NMIX_IsPlaying(NMIX_Source* source);
 
 /**
  * \fn float NMIX_GetPan(NMIX_Source* source)
