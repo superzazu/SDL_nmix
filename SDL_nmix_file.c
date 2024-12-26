@@ -40,13 +40,13 @@ static void sdlsound_callback(void* userdata, void* _buffer, int buffer_size) {
       // we check if we have reached EOF and set the flag accordingly
       if (s->predecoded) {
         // if the source is predecoded, 0 bytes left means we're at EOF
-        s->source->eof = SDL_TRUE;
+        s->source->eof = true;
       } else {
         // if the source is streamed, we check EOF with SDL_sound
         // if we're not at EOF, we decode more data
         if ((s->sample->flags & SOUND_SAMPLEFLAG_EOF) ||
             (s->sample->flags & SOUND_SAMPLEFLAG_EAGAIN)) {
-          s->source->eof = SDL_TRUE;
+          s->source->eof = true;
         } else {
           s->bytes_left = Sound_Decode(s->sample);
         }
@@ -68,7 +68,7 @@ static void sdlsound_callback(void* userdata, void* _buffer, int buffer_size) {
 }
 
 NMIX_FileSource* NMIX_NewFileSource(
-    SDL_RWops* rw, const char* ext, SDL_bool predecode) {
+    SDL_IOStream* rw, const char* ext, bool predecode) {
   if (NMIX_GetAudioDevice() == 0) {
     SDL_SetError("Please open NMIX device before creating sources.");
     return NULL;
@@ -83,9 +83,9 @@ NMIX_FileSource* NMIX_NewFileSource(
   s->rw = rw;
   s->ext = ext;
 
-  SDL_AudioSpec* spec = NMIX_GetAudioSpec();
+  // SDL_AudioSpec* spec = NMIX_GetAudioSpec();
 
-  s->sample = Sound_NewSample(s->rw, s->ext, NULL, spec->size);
+  s->sample = Sound_NewSample(s->rw, s->ext, NULL, 4096); // @TODO spec->size
   if (s->sample == NULL) {
     SDL_free(s);
     SDL_SetError("SDL_sound error: %s", Sound_GetError());
@@ -103,7 +103,7 @@ NMIX_FileSource* NMIX_NewFileSource(
   s->buffer = s->sample->buffer;
   s->bytes_left = 0;
 
-  s->loop_on = SDL_FALSE;
+  s->loop_on = false;
 
   s->predecoded = predecode;
   if (predecode) {
@@ -142,8 +142,7 @@ int NMIX_Rewind(NMIX_FileSource* s) {
     return -1;
   }
 
-  SDL_LockAudioDevice(NMIX_GetAudioDevice());
-  s->source->eof = SDL_FALSE;
+  s->source->eof = false;
   s->bytes_left = 0;
   s->buffer = s->sample->buffer;
 
@@ -152,23 +151,21 @@ int NMIX_Rewind(NMIX_FileSource* s) {
   } else {
     if (Sound_Rewind(s->sample) == 0) {
       SDL_SetError("Error while rewinding source: %s", Sound_GetError());
-      SDL_UnlockAudioDevice(NMIX_GetAudioDevice());
       return -1;
     }
   }
-  SDL_UnlockAudioDevice(NMIX_GetAudioDevice());
   return 0;
 }
 
-SDL_bool NMIX_GetLoop(NMIX_FileSource* s) {
+bool NMIX_GetLoop(NMIX_FileSource* s) {
   if (s == NULL) {
-    return SDL_FALSE;
+    return false;
   }
 
   return s->loop_on;
 }
 
-void NMIX_SetLoop(NMIX_FileSource* s, SDL_bool loop_on) {
+void NMIX_SetLoop(NMIX_FileSource* s, bool loop_on) {
   if (s == NULL) {
     return;
   }
@@ -181,7 +178,6 @@ void NMIX_FreeFileSource(NMIX_FileSource* s) {
     return;
   }
 
-  SDL_LockAudioDevice(NMIX_GetAudioDevice());
   if (s->sample != NULL) {
     Sound_FreeSample(s->sample);
   }
@@ -189,5 +185,4 @@ void NMIX_FreeFileSource(NMIX_FileSource* s) {
     NMIX_FreeSource(s->source);
   }
   SDL_free(s);
-  SDL_UnlockAudioDevice(NMIX_GetAudioDevice());
 }

@@ -1,5 +1,5 @@
 .DS_Store
-examples/build
+build
 docs
 misc
 .vscode

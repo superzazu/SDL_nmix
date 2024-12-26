@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "../SDL_nmix.h"
 #include "../SDL_nmix_file.h"
@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 
   Sound_Init();
 
-  SDL_RWops* f = SDL_RWFromFile(argv[1], "rb");
+  SDL_IOStream* f = SDL_IOFromFile(argv[1], "rb");
   if (f == NULL) {
     fprintf(stderr, "Error: cannot open file %s\n", argv[1]);
     return 1;

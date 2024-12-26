@@ -3,7 +3,7 @@
 #ifndef SDL_NMIX_FILE_H
 #define SDL_NMIX_FILE_H
 
-#include <SDL_sound.h>
+#include <SDL3_sound/SDL_sound.h>
 #include "SDL_nmix.h"
 
 /**
@@ -16,29 +16,30 @@
  *
  * \sa NMIX_NewFileSource
  */
-typedef struct NMIX_FileSource {
-  SDL_RWops* rw; /**< Pointer to the SDL_RWops used when decoding. */
+struct NMIX_FileSource {
+  SDL_IOStream* rw; /**< Pointer to the SDL_IOStream used when decoding. */
   const char* ext; /**< The file extension. */
   Sound_Sample* sample; /**< The SDL_sound struct used to decode. */
-  NMIX_Source* source; /**< The NMIX_Source source. */
-  SDL_bool loop_on; /**< Whether the source should be looped or not. */
+  struct NMIX_Source* source; /**< The NMIX_Source source. */
+  bool loop_on; /**< Whether the source should be looped or not. */
   Uint8* buffer; /**< Pointer to the SDL_sound buffer, at the current
                       position of decoding. */
   int bytes_left; /**< Number of bytes left to read in SDL_sound buffer. */
-  SDL_bool predecoded; /**< Set if the source is pre-decoded in memory. */
-} NMIX_FileSource;
+  bool predecoded; /**< Set if the source is pre-decoded in memory. */
+};
+typedef struct NMIX_FileSource NMIX_FileSource; /**< Convenience typedef. */
 
 /**
- * \fn NMIX_FileSource* NMIX_NewFileSource(SDL_RWops* rw, const char *ext,
- *         SDL_bool predecode)
+ * \fn NMIX_FileSource* NMIX_NewFileSource(SDL_IOStream* rw, const char *ext,
+ *         bool predecode)
  * \brief Creates a new NMIX_FileSource.
  *
  * Creates a source that will be decoded by SDL_sound. The sound can be
  * either pre-decoded in memory or streamed while playing. Warning: do not
- * create multiple NMIX_FileSource with the same SDL_RWops. The SDL_RWops
+ * create multiple NMIX_FileSource with the same SDL_IOStream. The SDL_IOStream
  * will automatically be closed/freed on NMIX_FreeFileSource().
  *
- *    \param rw A SDL_RWops that points to the file to decode
+ *    \param rw A SDL_IOStream that points to the file to decode
  *    \param ext The file extension (without the point '.'), eg "ogg"
  *    \param predecode Whether the source should be predecoded in memory (1),
  *           or streamed while playing (0)
@@ -52,7 +53,7 @@ typedef struct NMIX_FileSource {
  * \sa NMIX_SetLoop
  */
 NMIX_FileSource* NMIX_NewFileSource(
-    SDL_RWops* rw, const char* ext, SDL_bool predecode);
+    SDL_IOStream* rw, const char* ext, bool predecode);
 
 /**
  * \fn Sint32 NMIX_GetDuration(NMIX_FileSource* s)
@@ -86,7 +87,7 @@ int NMIX_Seek(NMIX_FileSource* s, int ms);
 int NMIX_Rewind(NMIX_FileSource* s);
 
 /**
- * \fn SDL_bool NMIX_GetLoop(NMIX_FileSource* s)
+ * \fn bool NMIX_GetLoop(NMIX_FileSource* s)
  * \brief Returns whether a NMIX_FileSource is looped or not.
  *
  *    \param s The file source to query
@@ -94,10 +95,10 @@ int NMIX_Rewind(NMIX_FileSource* s);
  *
  * \sa NMIX_SetLoop
  */
-SDL_bool NMIX_GetLoop(NMIX_FileSource* s);
+bool NMIX_GetLoop(NMIX_FileSource* s);
 
 /**
- * \fn void NMIX_SetLoop(NMIX_FileSource* s, SDL_bool loop_on)
+ * \fn void NMIX_SetLoop(NMIX_FileSource* s, bool loop_on)
  * \brief Sets whether a NMIX_FileSource is looped or not.
  *
  *    \param s The file source to query.
@@ -105,13 +106,13 @@ SDL_bool NMIX_GetLoop(NMIX_FileSource* s);
  *
  * \sa NMIX_GetLoop
  */
-void NMIX_SetLoop(NMIX_FileSource* s, SDL_bool loop_on);
+void NMIX_SetLoop(NMIX_FileSource* s, bool loop_on);
 
 /**
  * \fn void NMIX_FreeFileSource(NMIX_FileSource* s)
  * \brief Frees a NMIX_FileSource from memory.
  *
- * Note that the SDL_RWops is automatically closed/freed on call.
+ * Note that the SDL_IOStream is automatically closed/freed on call.
  *
  *    \param s The file source to free.
  *

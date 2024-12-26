@@ -1,7 +1,7 @@
 // 5_stresstest_decoding.c: plays 32 streams of ogg files simultaneously.
 
 #include <stdio.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "../SDL_nmix.h"
 #include "../SDL_nmix_file.h"
 
@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 
   NMIX_FileSource* sources[NB_VOICES] = {NULL};
   for (int i = 0; i < NB_VOICES; i++) {
-    SDL_RWops* f = SDL_RWFromFile("../music.ogg", "rb");
+    SDL_IOStream* f = SDL_IOFromFile("./examples/music.ogg", "rb");
     sources[i] = NMIX_NewFileSource(f, "ogg", 0);
     if (sources[i] == NULL) {
       fprintf(stderr, "Cannot open file: %s\n", SDL_GetError());
